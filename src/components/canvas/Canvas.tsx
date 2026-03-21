@@ -11,7 +11,7 @@ import {
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { nanoid } from 'nanoid';
-import { useLessonStore } from '../../store/lessonStore';
+import { usePresentationStore } from '../../store/presentationStore';
 import type { Block, BlockType, ClozeBlock, TextBlock, Slide } from '../../types';
 import ClozeBlockComponent from '../blocks/ClozeBlock';
 import TextBlockComponent from '../blocks/TextBlock';
@@ -61,7 +61,7 @@ function SlideCanvas({
   isActive: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `slide-${slide.id}` });
-  const removeBlock = useLessonStore((s) => s.removeBlock);
+  const removeBlock = usePresentationStore((s) => s.removeBlock);
 
   return (
     <div
@@ -106,7 +106,7 @@ function DraggableBlock({
     id: block.id,
     data: { source: 'canvas', block, slideId },
   });
-  const updateBlock = useLessonStore((s) => s.updateBlock);
+  const updateBlock = usePresentationStore((s) => s.updateBlock);
 
   const style = {
     position: 'absolute' as const,
@@ -216,18 +216,18 @@ interface CanvasProps {
 }
 
 export default function Canvas({ lessonId }: CanvasProps) {
-  const lesson = useLessonStore((s) => s.lessons.find((l) => l.id === lessonId));
-  const addSlide = useLessonStore((s) => s.addSlide);
-  const removeSlide = useLessonStore((s) => s.removeSlide);
-  const addBlock = useLessonStore((s) => s.addBlock);
-  const updateBlock = useLessonStore((s) => s.updateBlock);
+  const lesson = usePresentationStore((s) => s.presentations.find((p) => p.id === lessonId));
+  const addSlide = usePresentationStore((s) => s.addSlide);
+  const removeSlide = usePresentationStore((s) => s.removeSlide);
+  const addBlock = usePresentationStore((s) => s.addBlock);
+  const updateBlock = usePresentationStore((s) => s.updateBlock);
 
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [_dragType, setDragType] = useState<string | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  if (!lesson) return <div className="p-8 text-slate-400">Lesson not found.</div>;
+  if (!lesson) return <div className="p-8 text-slate-400">Presentation not found.</div>;
 
   const activeSlide = lesson.slides[activeSlideIndex] ?? lesson.slides[0];
 
@@ -247,7 +247,6 @@ export default function Canvas({ lessonId }: CanvasProps) {
     if (activeData.source === 'palette' && overData.startsWith('slide-')) {
       const targetSlideId = overData.replace('slide-', '');
       const blockType = activeData.blockType!;
-
       const newBlock = makeDefaultBlock(blockType);
       addBlock(lessonId, targetSlideId, newBlock);
     }
@@ -353,6 +352,5 @@ function makeDefaultBlock(type: BlockType): Block {
       ],
     } as ClozeBlock;
   }
-  // fallback
   return { ...base, type: 'text', content: '' } as TextBlock;
 }

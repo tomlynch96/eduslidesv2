@@ -41,15 +41,25 @@ export interface Slide {
   backgroundColour?: string;
 }
 
-// ─── Lesson Plan ─────────────────────────────────────────────────────────────
+// ─── Presentation ─────────────────────────────────────────────────────────────
+// A Presentation is one deliverable linked to a curriculum Lesson.
+// Multiple presentations can exist for the same lesson (e.g. Higher, Foundation, Re-teach).
 
-export interface LessonPlan {
+export interface Presentation {
   id: string;
+  // Human-readable title — the root lesson name is stored separately;
+  // variantName holds the suffix, e.g. "Higher", "Foundation", "Re-teach", "v2"
+  // The display name is: lessonTitle + (variantName ? " — " + variantName : "")
   title: string;
+  variantName: string;   // e.g. "" for the first/default, "Higher", "Foundation"
+
+  // Curriculum links
   subjectId: string;
+  qualificationId: string;
+  yearGroupId: string;
   unitId: string;
-  topicId: string;
   lessonId: string;       // links to Lesson in curriculum
+
   slides: Slide[];
   createdAt: string;
   updatedAt: string;
