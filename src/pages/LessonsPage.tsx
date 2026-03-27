@@ -4,118 +4,168 @@ import { usePresentationStore } from '../store/presentationStore';
 import { allSubjects } from '../data/curriculum';
 import type { Presentation } from '../types';
 
-// ─── Unit section with slide-in versions panel ────────────────────────────────
+// ─── Chevron ──────────────────────────────────────────────────────────────────
 
-function UnitSection({ unitGroup }: { unitGroup: UnitGroup }) {
-  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`w-3.5 h-3.5 transition-transform flex-shrink-0 ${open ? 'rotate-90' : ''}`}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+// ─── Lesson row ───────────────────────────────────────────────────────────────
+
+interface LessonRowProps {
+  lessonId: string;
+  lessonCode: string;
+  lessonTitle: string;
+  objectiveCount: number;
+  presentations: Presentation[];
+  subjectId: string;
+  qualificationId: string;
+  yearGroupId: string;
+  unitId: string;
+}
+
+function LessonRow({
+  lessonId,
+  lessonCode,
+  lessonTitle,
+  objectiveCount,
+  presentations,
+  subjectId,
+  qualificationId,
+  yearGroupId,
+  unitId,
+}: LessonRowProps) {
   const navigate = useNavigate();
-  const setActive = usePresentationStore((s) => s.setActivePresentation);
+  const [expanded, setExpanded] = useState(false);
 
-  const selectedLesson = unitGroup.lessons.find((l) => l.lessonId === selectedLessonId);
+  const params = new URLSearchParams({
+    subjectId,
+    qualificationId,
+    yearGroupId,
+    unitId,
+    lessonId,
+  }).toString();
 
-  const openPresentation = (p: Presentation) => {
-    setActive(p.id);
-    navigate(`/builder/${p.id}`);
-  };
+  const hasPresentation = presentations.length > 0;
+  const hasMany = presentations.length > 1;
+
+  const handleCreate = () => navigate(`/lessons/new?${params}`);
 
   return (
-    <div className="flex overflow-hidden transition-all">
-      {/* Lessons list — compresses when a lesson is selected */}
-      <div className={`transition-all duration-300 ease-in-out ${selectedLessonId ? 'w-1/2' : 'w-full'}`}>
-        {unitGroup.lessons.map((lessonGroup) => {
-          const isSelected = lessonGroup.lessonId === selectedLessonId;
-          const hasVariants = lessonGroup.presentations.length > 1;
-          const defaultP = lessonGroup.presentations[0];
+    <div className="border-t border-slate-100 first:border-t-0">
+      <div className="flex items-center gap-3 px-8 py-2.5 hover:bg-slate-50 transition-colors group">
+        {/* Lesson label */}
+        <div className="flex-1 min-w-0">
+          <span className="text-xs font-semibold text-brand-600 mr-1.5">{lessonCode}</span>
+          <span className="text-sm text-slate-700">{lessonTitle}</span>
+          {objectiveCount > 0 && (
+            <span className="ml-2 text-xs text-slate-400">
+              {objectiveCount} objective{objectiveCount !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
 
-          return (
+        {/* Actions */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {!hasPresentation && (
+            <>
+              <span className="text-xs text-slate-300">No presentation</span>
+              <button
+                onClick={handleCreate}
+                className="text-xs font-medium px-3 py-1 rounded-md bg-brand-500 hover:bg-brand-600 text-white transition-colors"
+              >
+                Create
+              </button>
+            </>
+          )}
+
+          {hasPresentation && !hasMany && (
+            <>
+              <span className="text-xs text-slate-400 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">
+                1 presentation
+              </span>
+              <button
+                onClick={() => navigate(`/builder/${presentations[0].id}`)}
+                className="text-xs font-medium px-3 py-1 rounded-md border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-800 transition-colors"
+              >
+                Open
+              </button>
+              <button
+                onClick={handleCreate}
+                className="text-xs font-medium px-3 py-1 rounded-md bg-brand-500 hover:bg-brand-600 text-white transition-colors"
+              >
+                New version
+              </button>
+            </>
+          )}
+
+          {hasMany && (
+            <>
+              <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">
+                {presentations.length} presentations
+              </span>
+              <button
+                onClick={() => setExpanded((v) => !v)}
+                className="text-xs font-medium px-3 py-1 rounded-md border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-800 transition-colors flex items-center gap-1"
+              >
+                <ChevronIcon open={expanded} />
+                Versions
+              </button>
+              <button
+                onClick={handleCreate}
+                className="text-xs font-medium px-3 py-1 rounded-md bg-brand-500 hover:bg-brand-600 text-white transition-colors"
+              >
+                New version
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Expanded version list */}
+      {expanded && hasMany && (
+        <div className="bg-slate-50 border-t border-slate-100">
+          {presentations.map((p) => (
             <div
-              key={lessonGroup.lessonId}
-              className={`border-t border-slate-100 flex items-center justify-between px-11 py-3 cursor-pointer transition-colors ${
-                isSelected ? 'bg-brand-50' : 'hover:bg-slate-50'
-              }`}
-              onClick={() => {
-                if (hasVariants) {
-                  setSelectedLessonId(isSelected ? null : lessonGroup.lessonId);
-                } else {
-                  openPresentation(defaultP);
-                }
-              }}
+              key={p.id}
+              className="flex items-center justify-between px-10 py-2 border-b border-slate-100 last:border-b-0"
             >
-              <div>
-                <p className={`text-sm font-medium transition-colors ${isSelected ? 'text-brand-600' : 'text-slate-800'}`}>
-                  <span className="text-slate-400 font-normal mr-2">{lessonGroup.lessonCode}</span>
-                  {lessonGroup.lessonTitle}
-                </p>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {defaultP.slides.length} slide{defaultP.slides.length !== 1 ? 's' : ''}
-                  {hasVariants && (
-                    <span className={`ml-2 font-medium ${isSelected ? 'text-brand-500' : 'text-slate-400'}`}>
-                      {lessonGroup.presentations.length} versions
-                    </span>
-                  )}
-                </p>
-              </div>
-              <svg
-                className={`w-4 h-4 flex-shrink-0 transition-all duration-300 ${isSelected ? 'text-brand-400 rotate-180' : 'text-slate-300'}`}
-                fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Versions panel — squeezes in from the right */}
-      <div className={`transition-all duration-300 ease-in-out overflow-hidden border-l border-slate-100 ${
-        selectedLessonId ? 'w-1/2 opacity-100' : 'w-0 opacity-0'
-      }`}>
-        {selectedLesson && (
-          <div className="h-full bg-slate-50">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-white">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Versions</p>
+              <span className="text-xs text-slate-600">
+                {p.variantName ? `${p.title} — ${p.variantName}` : p.title}
+              </span>
               <button
-                onClick={() => setSelectedLessonId(null)}
-                className="text-slate-300 hover:text-slate-500 transition-colors"
+                onClick={() => navigate(`/builder/${p.id}`)}
+                className="text-xs font-medium px-3 py-1 rounded-md border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-800 transition-colors"
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                Open
               </button>
             </div>
-            {selectedLesson.presentations.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => openPresentation(p)}
-                className="w-full text-left px-4 py-3 border-b border-slate-100 hover:bg-white transition-colors flex items-center justify-between gap-2 group"
-              >
-                <div>
-                  <p className="text-sm font-medium text-slate-700 group-hover:text-brand-600 transition-colors">
-                    {p.variantName || 'Default'}
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    {p.slides.length} slide{p.slides.length !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <svg className="w-3.5 h-3.5 text-slate-300 group-hover:text-brand-400 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Collapsible section ──────────────────────────────────────────────────────
+// ─── Page header ──────────────────────────────────────────────────────────────
 
-function ChevronIcon({ open }: { open: boolean }) {
+function PageHeader() {
   return (
-    <svg className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-    </svg>
+    <div className="flex items-center justify-between mb-8">
+      <div>
+        <h1 className="font-display text-2xl font-bold text-slate-900">Curriculum</h1>
+        <p className="text-slate-500 text-sm mt-1">Find a lesson, then create a presentation</p>
+      </div>
+    </div>
   );
 }
 
@@ -124,169 +174,96 @@ function ChevronIcon({ open }: { open: boolean }) {
 export default function LessonsPage() {
   const presentations = usePresentationStore((s) => s.presentations);
   const [openNodes, setOpenNodes] = useState<Record<string, boolean>>({});
-  const toggle = (key: string) => setOpenNodes((prev) => ({ ...prev, [key]: !prev[key] }));
-  const isOpen = (key: string, defaultOpen = true) => key in openNodes ? openNodes[key] : defaultOpen;
 
-  if (presentations.length === 0) {
-    return (
-      <div className="max-w-4xl mx-auto px-8 py-10">
-        <PageHeader />
-        <div className="text-center py-24 border-2 border-dashed border-slate-200 rounded-2xl">
-          <div className="text-4xl mb-3">📋</div>
-          <p className="text-slate-500 text-sm">No presentations yet. Create your first one.</p>
-          <Link to="/lessons/new" className="mt-4 inline-block text-brand-500 text-sm font-medium hover:underline">
-            Create a presentation →
-          </Link>
-        </div>
-      </div>
-    );
+  const toggle = (key: string) =>
+    setOpenNodes((prev) => ({ ...prev, [key]: !prev[key] }));
+  const isOpen = (key: string, defaultOpen = false) =>
+  key in openNodes ? openNodes[key] : defaultOpen;
+
+  // Index presentations by lessonId for fast lookup
+  const byLesson = new Map<string, Presentation[]>();
+  for (const p of presentations) {
+    if (!byLesson.has(p.lessonId)) byLesson.set(p.lessonId, []);
+    byLesson.get(p.lessonId)!.push(p);
   }
-
-  const grouped = buildGroupedTree(presentations);
 
   return (
     <div className="max-w-4xl mx-auto px-8 py-10">
       <PageHeader />
       <div className="space-y-3">
-        {grouped.map((subjectGroup) => {
-          const sKey = subjectGroup.subjectId;
+        {allSubjects.map((subject) => {
+          const sKey = subject.id;
           return (
-            <div key={sKey} className="bg-white border border-slate-200 rounded-xl">
+            <div key={sKey} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
               {/* Subject header */}
               <button
                 onClick={() => toggle(sKey)}
-                className="w-full flex items-center gap-2.5 px-4 py-3 bg-slate-800 text-white text-sm font-semibold hover:bg-slate-700 transition-colors rounded-t-xl"
+                className="w-full flex items-center gap-2.5 px-4 py-3 bg-slate-800 text-white text-sm font-semibold hover:bg-slate-700 transition-colors"
               >
                 <ChevronIcon open={isOpen(sKey)} />
-                <span>{subjectGroup.subjectTitle}</span>
-                <span className="ml-auto text-xs text-white/40 font-normal">
-                  {subjectGroup.totalCount} presentation{subjectGroup.totalCount !== 1 ? 's' : ''}
-                </span>
+                <span>{subject.title}</span>
               </button>
 
-              {isOpen(sKey) && subjectGroup.qualifications.map((qualGroup) => {
-                const qKey = `${sKey}-${qualGroup.qualId}`;
-                return (
-                  <div key={qKey}>
-                    <button
-                      onClick={() => toggle(qKey)}
-                      className="w-full flex items-center gap-2.5 px-5 py-2.5 bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition-colors border-t border-slate-200"
-                    >
-                      <ChevronIcon open={isOpen(qKey)} />
-                      <span>{qualGroup.qualTitle}</span>
-                    </button>
+              {isOpen(sKey) &&
+                subject.qualifications.map((qual) => {
+                  const qKey = `${sKey}-${qual.id}`;
+                  return (
+                    <div key={qKey}>
+                      {/* Qualification header */}
+                      <button
+                        onClick={() => toggle(qKey)}
+                        className="w-full flex items-center gap-2.5 px-5 py-2.5 bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition-colors border-t border-slate-200"
+                      >
+                        <ChevronIcon open={isOpen(qKey)} />
+                        <span>{qual.title}</span>
+                      </button>
 
-                    {isOpen(qKey) && qualGroup.units.map((unitGroup) => {
-                      const uKey = `${qKey}-${unitGroup.unitId}`;
-                      return (
-                        <div key={uKey}>
-                          <button
-                            onClick={() => toggle(uKey)}
-                            className="w-full flex items-center gap-2.5 px-7 py-2 text-slate-500 text-xs hover:bg-slate-50 transition-colors border-t border-slate-100"
-                          >
-                            <ChevronIcon open={isOpen(uKey)} />
-                            <span className="font-semibold text-brand-600 mr-1">{unitGroup.unitCode}</span>
-                            <span>{unitGroup.unitTitle}</span>
-                          </button>
+                      {isOpen(qKey) &&
+                        qual.yearGroups.map((yg) =>
+                          yg.units.map((unit) => {
+                            const uKey = `${qKey}-${unit.id}`;
+                            return (
+                              <div key={uKey}>
+                                {/* Unit header */}
+                                <button
+                                  onClick={() => toggle(uKey)}
+                                  className="w-full flex items-center gap-2.5 px-7 py-2 text-slate-500 text-xs hover:bg-slate-50 transition-colors border-t border-slate-100"
+                                >
+                                  <ChevronIcon open={isOpen(uKey)} />
+                                  <span className="font-semibold text-brand-600 mr-1">{unit.code}</span>
+                                  <span>{unit.title}</span>
+                                </button>
 
-                          {isOpen(uKey) && <UnitSection unitGroup={unitGroup} />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
+                                {/* Lessons */}
+                                {isOpen(uKey) && (
+                                  <div>
+                                    {unit.lessons.map((lesson) => (
+                                      <LessonRow
+                                        key={lesson.id}
+                                        lessonId={lesson.id}
+                                        lessonCode={lesson.code ?? ''}
+                                        lessonTitle={lesson.title}
+                                        objectiveCount={lesson.objectives?.length ?? 0}
+                                        presentations={byLesson.get(lesson.id) ?? []}
+                                        subjectId={subject.id}
+                                        qualificationId={qual.id}
+                                        yearGroupId={yg.id}
+                                        unitId={unit.id}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                    </div>
+                  );
+                })}
             </div>
           );
         })}
       </div>
     </div>
   );
-}
-
-function PageHeader() {
-  return (
-    <div className="flex items-center justify-between mb-8">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-slate-900">Presentations</h1>
-        <p className="text-slate-500 text-sm mt-1">Organised by curriculum</p>
-      </div>
-      <Link
-        to="/lessons/new"
-        className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-        New Presentation
-      </Link>
-    </div>
-  );
-}
-
-// ─── Tree builder ─────────────────────────────────────────────────────────────
-
-interface LessonGroup {
-  lessonId: string;
-  lessonCode: string;
-  lessonTitle: string;
-  presentations: Presentation[];
-}
-
-interface UnitGroup {
-  unitId: string;
-  unitCode: string;
-  unitTitle: string;
-  lessons: LessonGroup[];
-}
-
-interface QualGroup {
-  qualId: string;
-  qualTitle: string;
-  units: UnitGroup[];
-}
-
-interface SubjectGroup {
-  subjectId: string;
-  subjectTitle: string;
-  totalCount: number;
-  qualifications: QualGroup[];
-}
-
-function buildGroupedTree(presentations: Presentation[]): SubjectGroup[] {
-  const subjectMap = new Map<string, SubjectGroup>();
-
-  for (const p of presentations) {
-    const subject = allSubjects.find((s) => s.id === p.subjectId);
-    const qual = subject?.qualifications.find((q) => q.id === p.qualificationId);
-    const yg = qual?.yearGroups.find((y) => y.id === p.yearGroupId);
-    const unit = yg?.units.find((u) => u.id === p.unitId);
-    const lesson = unit?.lessons.find((l) => l.id === p.lessonId);
-
-    const subjectTitle = subject?.title ?? p.subjectId;
-    const qualTitle = qual?.title ?? p.qualificationId;
-    const unitCode = unit?.code ?? '';
-    const unitTitle = unit?.title ?? p.unitId;
-    const lessonCode = lesson?.code ?? '';
-    const lessonTitle = lesson?.title ?? p.title;
-
-    if (!subjectMap.has(p.subjectId)) {
-      subjectMap.set(p.subjectId, { subjectId: p.subjectId, subjectTitle, totalCount: 0, qualifications: [] });
-    }
-    const sGroup = subjectMap.get(p.subjectId)!;
-    sGroup.totalCount++;
-
-    let qGroup = sGroup.qualifications.find((q) => q.qualId === p.qualificationId);
-    if (!qGroup) { qGroup = { qualId: p.qualificationId, qualTitle, units: [] }; sGroup.qualifications.push(qGroup); }
-
-    let uGroup = qGroup.units.find((u) => u.unitId === p.unitId);
-    if (!uGroup) { uGroup = { unitId: p.unitId, unitCode, unitTitle, lessons: [] }; qGroup.units.push(uGroup); }
-
-    let lGroup = uGroup.lessons.find((l) => l.lessonId === p.lessonId);
-    if (!lGroup) { lGroup = { lessonId: p.lessonId, lessonCode, lessonTitle, presentations: [] }; uGroup.lessons.push(lGroup); }
-
-    lGroup.presentations.push(p);
-  }
-
-  return Array.from(subjectMap.values());
 }
