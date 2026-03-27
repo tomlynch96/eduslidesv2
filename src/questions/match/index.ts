@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 import type { MatchQuestion, QuestionRegistryEntry } from '../types';
 import { MatchEditor } from './Editor';
 import { MatchRenderer } from './Renderer';
+import { MatchWorksheetRenderer } from './WorksheetRenderer';
 
 export const makeDefault = (): MatchQuestion => ({
   id: nanoid(),
@@ -24,4 +25,5 @@ export const entry: QuestionRegistryEntry<MatchQuestion> = {
   makeDefault,
   Editor: MatchEditor,
   Renderer: MatchRenderer,
+  WorksheetRenderer: MatchWorksheetRenderer,
 };

@@ -1,77 +1,106 @@
 import { useState } from 'react';
 import type { MatchQuestion } from '../types';
 
-export function MatchRenderer({ question }: { question: MatchQuestion }) {
-  const shuffled = [...question.pairs].sort(() => Math.random() - 0.5);
-  const rightItems = [...question.pairs].sort(() => Math.random() - 0.5);
+function shuffle<T>(arr: T[]): T[] {
+  return [...arr].sort(() => Math.random() - 0.5);
+}
 
-  const [selected, setSelected] = useState<string | null>(null); // left pair id
-  const [matches, setMatches] = useState<Record<string, string>>({}); // leftId → rightId
-  const [checked, setChecked] = useState(false);
+// Assign a colour to each pair by index
+const PAIR_COLOURS = [
+  'bg-violet-100 border-violet-400 text-violet-800',
+  'bg-sky-100 border-sky-400 text-sky-800',
+  'bg-emerald-100 border-emerald-400 text-emerald-800',
+  'bg-amber-100 border-amber-400 text-amber-800',
+  'bg-rose-100 border-rose-400 text-rose-800',
+  'bg-teal-100 border-teal-400 text-teal-800',
+];
+
+const SELECTED = 'bg-brand-100 border-brand-500 text-brand-800';
+const DEFAULT = 'bg-white border-slate-200 text-slate-700 hover:border-brand-300 hover:bg-brand-50';
+
+export function MatchRenderer({ question }: { question: MatchQuestion }) {
+  const [leftItems] = useState(() => question.pairs);
+  const [rightItems] = useState(() => shuffle(question.pairs));
+
+  // Map of pairId → colour class for correctly matched pairs
+  const [matched, setMatched] = useState<Record<string, string>>({});
+  // Currently selected left id
+  const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
 
   const handleLeft = (id: string) => {
-    if (checked) return;
-    setSelected(selected === id ? null : id);
+    // If already matched, do nothing
+    if (matched[id]) return;
+    setSelectedLeft((prev) => (prev === id ? null : id));
   };
 
-  const handleRight = (rightId: string) => {
-    if (checked || !selected) return;
-    setMatches((prev) => ({ ...prev, [selected]: rightId }));
-    setSelected(null);
+  const handleRight = (id: string) => {
+    // If already matched, do nothing
+    if (matched[id]) return;
+    if (!selectedLeft) return;
+
+    if (selectedLeft === id) {
+      // Correct — same pair id on both sides
+      const colourIndex = question.pairs.findIndex((p) => p.id === id);
+      const colour = PAIR_COLOURS[colourIndex % PAIR_COLOURS.length];
+      setMatched((prev) => ({ ...prev, [id]: colour }));
+      setSelectedLeft(null);
+    } else {
+      // Incorrect — deselect
+      setSelectedLeft(null);
+    }
   };
 
-  const getResult = (leftId: string) => {
-    if (!checked) return 'neutral';
-    const pair = question.pairs.find((p) => p.id === leftId);
-    return matches[leftId] === pair?.id ? 'correct' : 'incorrect';
+  const getLeftClass = (id: string) => {
+    if (matched[id]) return `${matched[id]} border`;
+    if (selectedLeft === id) return `${SELECTED} border`;
+    return `${DEFAULT} border`;
   };
+
+  const getRightClass = (id: string) => {
+    if (matched[id]) return `${matched[id]} border`;
+    if (selectedLeft && !matched[id]) return `${DEFAULT} border cursor-pointer`;
+    return `${DEFAULT} border`;
+  };
+
+  const allMatched = Object.keys(matched).length === question.pairs.length;
 
   return (
-    <div className="p-3 space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          {shuffled.map((pair) => (
+    <div className="p-4 space-y-3">
+      {allMatched && (
+        <p className="text-xs font-semibold text-emerald-600 text-center">
+          ✓ All matched!
+        </p>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        {/* Left column */}
+        <div className="space-y-2">
+          {leftItems.map((pair) => (
             <button
               key={pair.id}
+              type="button"
               onClick={() => handleLeft(pair.id)}
-              className={`w-full text-left text-sm px-3 py-1.5 rounded-lg border transition-colors ${
-                selected === pair.id
-                  ? 'border-brand-500 bg-brand-50 text-brand-700'
-                  : checked
-                  ? getResult(pair.id) === 'correct'
-                    ? 'border-green-400 bg-green-50 text-green-700'
-                    : 'border-red-400 bg-red-50 text-red-700'
-                  : matches[pair.id]
-                  ? 'border-slate-400 bg-slate-50'
-                  : 'border-slate-200 hover:border-brand-300'
-              }`}
+              className={`w-full text-left text-sm px-3 py-2 rounded-lg transition-all ${getLeftClass(pair.id)}`}
             >
               {pair.left}
             </button>
           ))}
         </div>
-        <div className="space-y-1">
+
+        {/* Right column — shuffled */}
+        <div className="space-y-2">
           {rightItems.map((pair) => (
             <button
               key={pair.id}
+              type="button"
               onClick={() => handleRight(pair.id)}
-              className={`w-full text-left text-sm px-3 py-1.5 rounded-lg border transition-colors ${
-                selected
-                  ? 'border-brand-300 hover:border-brand-500 hover:bg-brand-50 cursor-pointer'
-                  : 'border-slate-200 cursor-default'
-              }`}
+              className={`w-full text-left text-sm px-3 py-2 rounded-lg transition-all ${getRightClass(pair.id)}`}
             >
               {pair.right}
             </button>
           ))}
         </div>
       </div>
-      <button
-        onClick={() => setChecked(true)}
-        className="text-xs bg-brand-500 hover:bg-brand-600 text-white px-3 py-1 rounded"
-      >
-        Check
-      </button>
     </div>
   );
 }
