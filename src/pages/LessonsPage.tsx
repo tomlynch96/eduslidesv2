@@ -19,6 +19,76 @@ function ChevronIcon({ open }: { open: boolean }) {
   );
 }
 
+// ─── Recent presentations ─────────────────────────────────────────────────────
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function RecentPresentations({ presentations }: { presentations: Presentation[] }) {
+  const navigate = useNavigate();
+
+  if (presentations.length === 0) return null;
+
+  const recent = [...presentations]
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 6);
+
+  // Look up unit code for a presentation
+  function unitCode(p: Presentation): string {
+    const subject = allSubjects.find((s) => s.id === p.subjectId);
+    const qual = subject?.qualifications.find((q) => q.id === p.qualificationId);
+    const yg = qual?.yearGroups.find((y) => y.id === p.yearGroupId);
+    const unit = yg?.units.find((u) => u.id === p.unitId);
+    return unit?.code ?? '';
+  }
+
+  return (
+    <div className="mb-10">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
+        Recent
+      </h2>
+      <div className="grid grid-cols-3 gap-3">
+        {recent.map((p) => {
+          const displayTitle = p.variantName ? `${p.title} — ${p.variantName}` : p.title;
+          const code = unitCode(p);
+          return (
+            <button
+              key={p.id}
+              onClick={() => navigate(`/builder/${p.id}`)}
+              className="group text-left bg-white border border-slate-200 rounded-xl p-4 hover:border-brand-300 hover:shadow-sm transition-all"
+            >
+              {/* Slide count pip */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold text-brand-600">{code}</span>
+                <span className="text-xs text-slate-300">
+                  {p.slides.length} slide{p.slides.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {/* Title */}
+              <p className="text-sm font-medium text-slate-800 leading-snug group-hover:text-brand-600 transition-colors line-clamp-2">
+                {displayTitle}
+              </p>
+
+              {/* Timestamp */}
+              <p className="mt-2 text-xs text-slate-400">{timeAgo(p.updatedAt)}</p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Lesson row ───────────────────────────────────────────────────────────────
 
 interface LessonRowProps {
@@ -90,7 +160,7 @@ function LessonRow({
 
           {hasPresentation && !hasMany && (
             <>
-              <span className="text-xs text-slate-400 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">
                 1 presentation
               </span>
               <button
@@ -160,11 +230,9 @@ function LessonRow({
 
 function PageHeader() {
   return (
-    <div className="flex items-center justify-between mb-8">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-slate-900">Curriculum</h1>
-        <p className="text-slate-500 text-sm mt-1">Find a lesson, then create a presentation</p>
-      </div>
+    <div className="mb-8">
+      <h1 className="font-display text-2xl font-bold text-slate-900">Curriculum</h1>
+      <p className="text-slate-500 text-sm mt-1">Find a lesson, then create a presentation</p>
     </div>
   );
 }
@@ -178,7 +246,7 @@ export default function LessonsPage() {
   const toggle = (key: string) =>
     setOpenNodes((prev) => ({ ...prev, [key]: !prev[key] }));
   const isOpen = (key: string, defaultOpen = false) =>
-  key in openNodes ? openNodes[key] : defaultOpen;
+    key in openNodes ? openNodes[key] : defaultOpen;
 
   // Index presentations by lessonId for fast lookup
   const byLesson = new Map<string, Presentation[]>();
@@ -190,6 +258,7 @@ export default function LessonsPage() {
   return (
     <div className="max-w-4xl mx-auto px-8 py-10">
       <PageHeader />
+      <RecentPresentations presentations={presentations} />
       <div className="space-y-3">
         {allSubjects.map((subject) => {
           const sKey = subject.id;
