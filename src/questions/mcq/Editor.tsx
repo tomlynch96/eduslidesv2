@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { useQuestionStore } from '../../store/questionStore';
 import type { McqQuestion } from '../types';
 
 interface Props {
@@ -7,24 +8,33 @@ interface Props {
 }
 
 export function McqEditor({ question, onChange }: Props) {
+  const updateQuestion = useQuestionStore((s) => s.updateQuestion);
+
+  const update = (updated: McqQuestion) => {
+    onChange(updated);
+    updateQuestion(updated);
+  };
+
+  const updateStem = (stem: string) => update({ ...question, stem });
+
   const updateOption = (id: string, text: string) =>
-    onChange({ ...question, options: question.options.map((o) => (o.id === id ? { ...o, text } : o)) });
+    update({ ...question, options: question.options.map((o) => (o.id === id ? { ...o, text } : o)) });
 
   const toggleCorrect = (id: string) =>
-    onChange({ ...question, options: question.options.map((o) => (o.id === id ? { ...o, isCorrect: !o.isCorrect } : o)) });
+    update({ ...question, options: question.options.map((o) => (o.id === id ? { ...o, isCorrect: !o.isCorrect } : o)) });
 
   const add = () =>
-    onChange({ ...question, options: [...question.options, { id: nanoid(), text: '', isCorrect: false }] });
+    update({ ...question, options: [...question.options, { id: nanoid(), text: '', isCorrect: false }] });
 
   const remove = (id: string) =>
-    onChange({ ...question, options: question.options.filter((o) => o.id !== id) });
+    update({ ...question, options: question.options.filter((o) => o.id !== id) });
 
   return (
     <div className="p-3 space-y-2">
       <input
         className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-brand-400"
         value={question.stem}
-        onChange={(e) => onChange({ ...question, stem: e.target.value })}
+        onChange={(e) => updateStem(e.target.value)}
         placeholder="Question stem"
       />
       <p className="text-xs text-slate-400">Tick correct answers</p>
@@ -51,7 +61,9 @@ export function McqEditor({ question, onChange }: Props) {
           </button>
         </div>
       ))}
-      <button onClick={add} className="text-xs text-brand-500 hover:text-brand-600">+ Add option</button>
+      <button onClick={add} className="text-xs text-brand-500 hover:text-brand-600">
+        + Add option
+      </button>
     </div>
   );
 }

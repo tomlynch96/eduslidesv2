@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 import type { ShortAnswerQuestion, QuestionRegistryEntry } from '../types';
 import { ShortAnswerEditor } from './Editor';
 import { ShortAnswerRenderer } from './Renderer';
+import { ShortAnswerWorksheetRenderer } from './WorksheetRenderer';
 
 export const makeDefault = (): ShortAnswerQuestion => ({
   id: nanoid(),
@@ -21,4 +22,5 @@ export const entry: QuestionRegistryEntry<ShortAnswerQuestion> = {
   makeDefault,
   Editor: ShortAnswerEditor,
   Renderer: ShortAnswerRenderer,
+  WorksheetRenderer: ShortAnswerWorksheetRenderer,
 };

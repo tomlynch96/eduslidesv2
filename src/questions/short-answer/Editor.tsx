@@ -1,3 +1,4 @@
+import { useQuestionStore } from '../../store/questionStore';
 import type { ShortAnswerQuestion } from '../types';
 
 interface Props {
@@ -6,12 +7,19 @@ interface Props {
 }
 
 export function ShortAnswerEditor({ question, onChange }: Props) {
+  const updateQuestion = useQuestionStore((s) => s.updateQuestion);
+
+  const update = (updated: ShortAnswerQuestion) => {
+    onChange(updated);
+    updateQuestion(updated);
+  };
+
   return (
     <div className="p-3 space-y-2">
       <input
         className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-brand-400"
         value={question.prompt}
-        onChange={(e) => onChange({ ...question, prompt: e.target.value })}
+        onChange={(e) => update({ ...question, prompt: e.target.value })}
         placeholder="Question prompt"
       />
       <div>
@@ -20,7 +28,7 @@ export function ShortAnswerEditor({ question, onChange }: Props) {
           className="w-full border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:border-brand-400 resize-none"
           rows={2}
           value={question.markScheme ?? ''}
-          onChange={(e) => onChange({ ...question, markScheme: e.target.value })}
+          onChange={(e) => update({ ...question, markScheme: e.target.value })}
           placeholder="Key points to award marks for..."
         />
       </div>

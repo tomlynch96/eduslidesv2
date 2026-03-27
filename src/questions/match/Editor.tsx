@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid';
+import { useQuestionStore } from '../../store/questionStore';
 import type { MatchQuestion } from '../types';
 
 interface Props {
@@ -7,18 +8,25 @@ interface Props {
 }
 
 export function MatchEditor({ question, onChange }: Props) {
-  const update = (id: string, side: 'left' | 'right', value: string) => {
-    onChange({
+  const updateQuestion = useQuestionStore((s) => s.updateQuestion);
+
+  const update = (updated: MatchQuestion) => {
+    onChange(updated);
+    updateQuestion(updated);
+  };
+
+  const updatePair = (id: string, side: 'left' | 'right', value: string) => {
+    update({
       ...question,
       pairs: question.pairs.map((p) => (p.id === id ? { ...p, [side]: value } : p)),
     });
   };
 
   const add = () =>
-    onChange({ ...question, pairs: [...question.pairs, { id: nanoid(), left: '', right: '' }] });
+    update({ ...question, pairs: [...question.pairs, { id: nanoid(), left: '', right: '' }] });
 
   const remove = (id: string) =>
-    onChange({ ...question, pairs: question.pairs.filter((p) => p.id !== id) });
+    update({ ...question, pairs: question.pairs.filter((p) => p.id !== id) });
 
   return (
     <div className="p-3 space-y-2">
@@ -30,13 +38,13 @@ export function MatchEditor({ question, onChange }: Props) {
           <input
             className="border border-slate-200 rounded px-2 py-1 text-sm focus:outline-none focus:border-brand-400"
             value={pair.left}
-            onChange={(e) => update(pair.id, 'left', e.target.value)}
+            onChange={(e) => updatePair(pair.id, 'left', e.target.value)}
             placeholder="Left item"
           />
           <input
             className="border border-slate-200 rounded px-2 py-1 text-sm focus:outline-none focus:border-brand-400"
             value={pair.right}
-            onChange={(e) => update(pair.id, 'right', e.target.value)}
+            onChange={(e) => updatePair(pair.id, 'right', e.target.value)}
             placeholder="Right item"
           />
           <button

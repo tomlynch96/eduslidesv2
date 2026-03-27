@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 import type { McqQuestion, QuestionRegistryEntry } from '../types';
 import { McqEditor } from './Editor';
 import { McqRenderer } from './Renderer';
+import { McqWorksheetRenderer } from './WorksheetRenderer';
 
 export const makeDefault = (): McqQuestion => ({
   id: nanoid(),
@@ -25,4 +26,5 @@ export const entry: QuestionRegistryEntry<McqQuestion> = {
   makeDefault,
   Editor: McqEditor,
   Renderer: McqRenderer,
+  WorksheetRenderer: McqWorksheetRenderer,
 };

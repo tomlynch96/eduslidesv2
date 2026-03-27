@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 import type { OrderQuestion, QuestionRegistryEntry } from '../types';
 import { OrderEditor } from './Editor';
 import { OrderRenderer } from './Renderer';
+import { OrderWorksheetRenderer } from './WorksheetRenderer';
 
 export const makeDefault = (): OrderQuestion => ({
   id: nanoid(),
@@ -24,4 +25,5 @@ export const entry: QuestionRegistryEntry<OrderQuestion> = {
   makeDefault,
   Editor: OrderEditor,
   Renderer: OrderRenderer,
+  WorksheetRenderer: OrderWorksheetRenderer,
 };
