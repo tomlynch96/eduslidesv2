@@ -12,23 +12,27 @@ import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { nanoid } from 'nanoid';
 import { usePresentationStore } from '../../store/presentationStore';
-import type { Block, BlockType, ClozeBlock, TextBlock, Slide } from '../../types';
-import ClozeBlockComponent from '../blocks/ClozeBlock';
+import { useQuestionStore } from '../../store/questionStore';
+import { QUESTION_REGISTRY } from '../../questions/registry';
+import type { Block, TextBlock, QuestionRefBlock, Slide } from '../../types';
 import TextBlockComponent from '../blocks/TextBlock';
+import QuestionRefBlockComponent from '../../blocks/QuestionRefBlock';
 
-// ─── Block palette item ───────────────────────────────────────────────────────
+type CanvasMode = 'edit' | 'present';
 
-const PALETTE_ITEMS: { type: BlockType; label: string; icon: string; description: string }[] = [
-  { type: 'text', label: 'Text', icon: '📝', description: 'Free text or instructions' },
-  { type: 'cloze', label: 'Cloze', icon: '🔡', description: 'Fill in the blanks' },
+// ─── Palette ──────────────────────────────────────────────────────────────────
+
+const TEXT_PALETTE = [
+  { type: 'text', label: 'Text', icon: '📝', description: 'Title or instructions' },
 ];
 
-function PaletteItem({ type, label, icon, description }: (typeof PALETTE_ITEMS)[0]) {
+function PaletteItem({ type, label, icon, description }: {
+  type: string; label: string; icon: string; description: string;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette-${type}`,
     data: { source: 'palette', blockType: type },
   });
-
   return (
     <div
       ref={setNodeRef}
@@ -49,16 +53,10 @@ function PaletteItem({ type, label, icon, description }: (typeof PALETTE_ITEMS)[
   );
 }
 
-// ─── Canvas drop zone ─────────────────────────────────────────────────────────
+// ─── Slide canvas drop zone ───────────────────────────────────────────────────
 
-function SlideCanvas({
-  slide,
-  lessonId,
-  isActive,
-}: {
-  slide: Slide;
-  lessonId: string;
-  isActive: boolean;
+function SlideCanvas({ slide, lessonId, isActive, mode }: {
+  slide: Slide; lessonId: string; isActive: boolean; mode: CanvasMode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `slide-${slide.id}` });
   const removeBlock = usePresentationStore((s) => s.removeBlock);
@@ -67,15 +65,18 @@ function SlideCanvas({
     <div
       ref={setNodeRef}
       className={`relative slide-aspect w-full rounded-xl border-2 transition-colors overflow-hidden bg-white ${
-        isOver ? 'border-brand-400 bg-brand-50/30' : isActive ? 'border-brand-300' : 'border-slate-200'
+        isOver
+          ? 'border-brand-400 bg-brand-50/30'
+          : isActive
+          ? 'border-brand-300'
+          : 'border-slate-200'
       }`}
     >
-      {slide.blocks.length === 0 && (
+      {slide.blocks.length === 0 && mode === 'edit' && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <p className="text-slate-300 text-sm select-none">Drag blocks here</p>
         </div>
       )}
-
       {slide.blocks.map((block) => (
         <DraggableBlock
           key={block.id}
@@ -83,28 +84,22 @@ function SlideCanvas({
           onRemove={() => removeBlock(lessonId, slide.id, block.id)}
           lessonId={lessonId}
           slideId={slide.id}
+          mode={mode}
         />
       ))}
     </div>
   );
 }
 
-// ─── Draggable block on canvas ────────────────────────────────────────────────
+// ─── Draggable block ──────────────────────────────────────────────────────────
 
-function DraggableBlock({
-  block,
-  onRemove,
-  lessonId,
-  slideId,
-}: {
-  block: Block;
-  onRemove: () => void;
-  lessonId: string;
-  slideId: string;
+function DraggableBlock({ block, onRemove, lessonId, slideId, mode }: {
+  block: Block; onRemove: () => void; lessonId: string; slideId: string; mode: CanvasMode;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: block.id,
     data: { source: 'canvas', block, slideId },
+    disabled: mode === 'present',
   });
   const updateBlock = usePresentationStore((s) => s.updateBlock);
 
@@ -120,24 +115,26 @@ function DraggableBlock({
 
   return (
     <div ref={setNodeRef} style={style} className="group">
-      {/* Drag handle */}
-      <div
-        {...listeners}
-        {...attributes}
-        className="absolute -top-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing bg-brand-500 text-white text-xs px-2 py-0.5 rounded-full select-none z-10"
-      >
-        ⠿
-      </div>
-      {/* Remove button */}
-      <button
-        onClick={onRemove}
-        className="absolute -top-3 -right-3 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center z-10 hover:bg-red-600"
-      >
-        ×
-      </button>
-
+      {mode === 'edit' && (
+        <>
+          <div
+            {...listeners}
+            {...attributes}
+            className="absolute -top-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing bg-brand-500 text-white text-xs px-2 py-0.5 rounded-full select-none z-10"
+          >
+            ⠿
+          </div>
+          <button
+            onClick={onRemove}
+            className="absolute -top-3 -right-3 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center z-10 hover:bg-red-600"
+          >
+            ×
+          </button>
+        </>
+      )}
       <BlockRenderer
         block={block}
+        mode={mode}
         onChange={(updated) => updateBlock(lessonId, slideId, updated)}
       />
     </div>
@@ -146,41 +143,50 @@ function DraggableBlock({
 
 // ─── Block renderer ───────────────────────────────────────────────────────────
 
-function BlockRenderer({ block, onChange }: { block: Block; onChange: (b: Block) => void }) {
+function BlockRenderer({ block, mode, onChange }: {
+  block: Block; mode: CanvasMode; onChange: (b: Block) => void;
+}) {
   if (block.type === 'text') {
-    return (
-      <TextBlockComponent
-        block={block as TextBlock}
-        onChange={(updated) => onChange(updated)}
-      />
-    );
+    return <TextBlockComponent block={block as TextBlock} onChange={(b) => onChange(b)} />;
   }
-  if (block.type === 'cloze') {
+  if (block.type === 'question-ref') {
     return (
-      <ClozeBlockComponent
-        block={block as ClozeBlock}
-        onChange={(updated) => onChange(updated)}
-        mode="edit"
+      <QuestionRefBlockComponent
+        block={block as QuestionRefBlock}
+        mode={mode === 'present' ? 'present' : 'edit'}
       />
     );
   }
   return null;
 }
 
-// ─── Slide thumbnail (sidebar) ────────────────────────────────────────────────
+// ─── Default block factory ────────────────────────────────────────────────────
 
-function SlideThumbnail({
-  slide,
-  index,
-  isActive,
-  onClick,
-  onRemove,
-}: {
-  slide: Slide;
-  index: number;
-  isActive: boolean;
-  onClick: () => void;
-  onRemove: () => void;
+function makeDefaultBlock(
+  type: string,
+  addQuestion: (q: never) => string,
+  curriculumLessonId: string
+): Block {
+  const base = { id: nanoid(), position: { x: 40, y: 40, width: 380, height: 140 } };
+
+  if (type === 'text') {
+    return { ...base, type: 'text', content: 'Click to edit text…' } as TextBlock;
+  }
+
+  const entry = QUESTION_REGISTRY[type];
+  if (entry) {
+    const question = { ...entry.makeDefault(), lessonId: curriculumLessonId };
+    const questionId = addQuestion(question as never);
+    return { ...base, type: 'question-ref', questionId } as QuestionRefBlock;
+  }
+
+  return { ...base, type: 'text', content: '' } as TextBlock;
+}
+
+// ─── Slide thumbnail ──────────────────────────────────────────────────────────
+
+function SlideThumbnail({ slide, index, isActive, onClick, onRemove }: {
+  slide: Slide; index: number; isActive: boolean; onClick: () => void; onRemove: () => void;
 }) {
   return (
     <div className="relative group">
@@ -194,7 +200,9 @@ function SlideThumbnail({
           <span className="absolute bottom-1 right-1.5 text-[9px] text-slate-400">{index + 1}</span>
           {slide.blocks.length > 0 && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-[8px] text-slate-400">{slide.blocks.length} block{slide.blocks.length !== 1 ? 's' : ''}</span>
+              <span className="text-[8px] text-slate-400">
+                {slide.blocks.length} block{slide.blocks.length !== 1 ? 's' : ''}
+              </span>
             </div>
           )}
         </div>
@@ -209,23 +217,24 @@ function SlideThumbnail({
   );
 }
 
-// ─── Main Canvas component ────────────────────────────────────────────────────
+// ─── Main Canvas ──────────────────────────────────────────────────────────────
 
-interface CanvasProps {
-  lessonId: string;
-}
-
-export default function Canvas({ lessonId }: CanvasProps) {
+export default function Canvas({ lessonId, mode = 'edit' }: {
+  lessonId: string; mode?: CanvasMode;
+}) {
   const lesson = usePresentationStore((s) => s.presentations.find((p) => p.id === lessonId));
   const addSlide = usePresentationStore((s) => s.addSlide);
   const removeSlide = usePresentationStore((s) => s.removeSlide);
   const addBlock = usePresentationStore((s) => s.addBlock);
   const updateBlock = usePresentationStore((s) => s.updateBlock);
+  const addQuestion = useQuestionStore((s) => s.addQuestion);
 
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [_dragType, setDragType] = useState<string | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   if (!lesson) return <div className="p-8 text-slate-400">Presentation not found.</div>;
 
@@ -237,21 +246,28 @@ export default function Canvas({ lessonId }: CanvasProps) {
 
   const handleDragEnd = (event: DragEndEvent) => {
     setDragType(null);
+    if (mode === 'present') return;
+
     const { active, over, delta } = event;
-    const activeData = active.data.current as { source: string; blockType?: BlockType; block?: Block; slideId?: string };
+    const activeData = active.data.current as {
+      source: string;
+      blockType?: string;
+      block?: Block;
+      slideId?: string;
+    };
 
     if (!over) return;
-    const overData = over.id as string;
 
-    // Drop from palette onto slide
-    if (activeData.source === 'palette' && overData.startsWith('slide-')) {
-      const targetSlideId = overData.replace('slide-', '');
-      const blockType = activeData.blockType!;
-      const newBlock = makeDefaultBlock(blockType);
+    if (activeData.source === 'palette' && String(over.id).startsWith('slide-')) {
+      const targetSlideId = String(over.id).replace('slide-', '');
+      const newBlock = makeDefaultBlock(
+        activeData.blockType!,
+        addQuestion as never,
+        lesson.lessonId
+      );
       addBlock(lessonId, targetSlideId, newBlock);
     }
 
-    // Move existing block on canvas
     if (activeData.source === 'canvas' && activeData.block) {
       const moved: Block = {
         ...activeData.block,
@@ -261,8 +277,7 @@ export default function Canvas({ lessonId }: CanvasProps) {
           y: Math.max(0, activeData.block.position.y + delta.y),
         },
       };
-      const slideId = activeData.slideId ?? activeSlide.id;
-      updateBlock(lessonId, slideId, moved);
+      updateBlock(lessonId, activeData.slideId ?? activeSlide.id, moved);
     }
   };
 
@@ -284,38 +299,63 @@ export default function Canvas({ lessonId }: CanvasProps) {
               }}
             />
           ))}
-          <button
-            onClick={() => {
-              addSlide(lessonId);
-              setActiveSlideIndex(lesson.slides.length);
-            }}
-            className="w-full rounded-lg border-2 border-dashed border-slate-300 hover:border-brand-400 text-slate-400 hover:text-brand-500 transition-colors py-2 text-xs"
-          >
-            + slide
-          </button>
+          {mode === 'edit' && (
+            <button
+              onClick={() => {
+                addSlide(lessonId);
+                setActiveSlideIndex(lesson.slides.length);
+              }}
+              className="w-full rounded-lg border-2 border-dashed border-slate-300 hover:border-brand-400 text-slate-400 hover:text-brand-500 transition-colors py-2 text-xs"
+            >
+              + slide
+            </button>
+          )}
         </div>
 
-        {/* Canvas area */}
+        {/* Canvas + palette */}
         <div className="flex-1 flex gap-4 p-6 overflow-auto">
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1">
             <div className="max-w-4xl w-full mx-auto">
               <SlideCanvas
                 slide={activeSlide}
                 lessonId={lessonId}
                 isActive
+                mode={mode}
               />
             </div>
           </div>
 
-          {/* Block palette */}
-          <div className="w-44 flex-shrink-0">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Blocks</p>
-            <div className="space-y-2">
-              {PALETTE_ITEMS.map((item) => (
-                <PaletteItem key={item.type} {...item} />
-              ))}
+          {/* Palette — edit only */}
+          {mode === 'edit' && (
+            <div className="w-44 flex-shrink-0 space-y-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  Content
+                </p>
+                <div className="space-y-2">
+                  {TEXT_PALETTE.map((item) => (
+                    <PaletteItem key={item.type} {...item} />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  Questions
+                </p>
+                <div className="space-y-2">
+                  {Object.values(QUESTION_REGISTRY).map((entry) => (
+                    <PaletteItem
+                      key={entry.type}
+                      type={entry.type}
+                      label={entry.label}
+                      icon={entry.icon}
+                      description={entry.description}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -328,29 +368,4 @@ export default function Canvas({ lessonId }: CanvasProps) {
       </DragOverlay>
     </DndContext>
   );
-}
-
-// ─── Default block factory ────────────────────────────────────────────────────
-
-function makeDefaultBlock(type: BlockType): Block {
-  const base = {
-    id: nanoid(),
-    position: { x: 40, y: 40, width: 360, height: 100 },
-  };
-
-  if (type === 'text') {
-    return { ...base, type: 'text', content: 'Click to edit text…' } as TextBlock;
-  }
-  if (type === 'cloze') {
-    return {
-      ...base,
-      type: 'cloze',
-      segments: [
-        { id: nanoid(), text: 'The speed of light is ', isBlank: false },
-        { id: nanoid(), text: '3 × 10⁸ m/s', isBlank: true },
-        { id: nanoid(), text: ' in a vacuum.', isBlank: false },
-      ],
-    } as ClozeBlock;
-  }
-  return { ...base, type: 'text', content: '' } as TextBlock;
 }

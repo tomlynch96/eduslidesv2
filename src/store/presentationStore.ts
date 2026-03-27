@@ -139,6 +139,6 @@ export const usePresentationStore = create<PresentationStore>()(
         }));
       },
     }),
-    { name: 'presentation-store' }
+    { name: 'presentation-store-v2' }
   )
 );
