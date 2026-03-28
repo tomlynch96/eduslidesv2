@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, NavLink, useLocation } from 'react-router-dom';
 
 export default function Layout() {
   const location = useLocation();
@@ -7,17 +7,37 @@ export default function Layout() {
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
 
-      {/* Sidebar — only shown in builder */}
-      {isBuilder && (
+      {/* Sidebar — shown on all non-builder pages */}
+      {!isBuilder && (
         <aside className="w-56 flex-shrink-0 bg-brand-900 text-white flex flex-col overflow-hidden">
           {/* Logo */}
           <div className="px-5 py-5 border-b border-white/10 flex-shrink-0">
-            <Link to="/lessons" className="font-display text-lg font-bold tracking-tight hover:opacity-80 transition-opacity">
+            <Link to="/curriculum" className="font-display text-lg font-bold tracking-tight hover:opacity-80 transition-opacity">
               Pedagogy<span className="text-brand-400">Builder</span>
             </Link>
           </div>
 
-          {/* Assistant placeholder */}
+          {/* Nav */}
+          <nav className="flex-1 px-3 py-4 space-y-1">
+            <SideNavLink to="/curriculum" icon="📚" label="Curriculum" />
+            <SideNavLink to="/questions" icon="❓" label="Questions" />
+          </nav>
+
+          {/* Phase label */}
+          <div className="px-4 py-4 border-t border-white/10 text-xs text-white/20 flex-shrink-0">
+            Phase 5 build
+          </div>
+        </aside>
+      )}
+
+      {/* Builder sidebar */}
+      {isBuilder && (
+        <aside className="w-56 flex-shrink-0 bg-brand-900 text-white flex flex-col overflow-hidden">
+          <div className="px-5 py-5 border-b border-white/10 flex-shrink-0">
+            <Link to="/curriculum" className="font-display text-lg font-bold tracking-tight hover:opacity-80 transition-opacity">
+              Pedagogy<span className="text-brand-400">Builder</span>
+            </Link>
+          </div>
           <div className="flex-1 flex flex-col items-center justify-center px-5 gap-3 text-center">
             <div className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center">
               <svg className="w-4 h-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,10 +48,8 @@ export default function Layout() {
               Lesson assistant<br />coming soon
             </p>
           </div>
-
-          {/* Phase label */}
           <div className="px-4 py-4 border-t border-white/10 text-xs text-white/20 flex-shrink-0">
-            Phase 3 build
+            Phase 5 build
           </div>
         </aside>
       )}
@@ -41,5 +59,23 @@ export default function Layout() {
         <Outlet />
       </main>
     </div>
+  );
+}
+
+function SideNavLink({ to, icon, label }: { to: string; icon: string; label: string }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+          isActive
+            ? 'bg-white/10 text-white font-medium'
+            : 'text-white/50 hover:text-white hover:bg-white/5'
+        }`
+      }
+    >
+      <span>{icon}</span>
+      <span>{label}</span>
+    </NavLink>
   );
 }

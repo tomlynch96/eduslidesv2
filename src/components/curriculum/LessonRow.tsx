@@ -52,7 +52,7 @@ export default function LessonRow({
   const hasPresentation = presentations.length > 0;
   const hasMany = presentations.length > 1;
 
-  const handleCreate = () => navigate(`/lessons/new?${params}`);
+  const handleCreate = () => navigate(`/curriculum/new?${params}`);
 
   return (
     <div className="border-t border-slate-100 first:border-t-0">

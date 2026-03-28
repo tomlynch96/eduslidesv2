@@ -1,6 +1,6 @@
 // ─── Block System ─────────────────────────────────────────────────────────────
 
-export type BlockType = 'text' | 'cloze' | 'match' | 'order' | 'mcq';
+export type BlockType = 'text' | 'question-ref';
 
 export interface BlockPosition {
   x: number;
@@ -20,18 +20,12 @@ export interface TextBlock extends BaseBlock {
   content: string;
 }
 
-export interface ClozeSegment {
-  id: string;
-  text: string;
-  isBlank: boolean;
+export interface QuestionRefBlock extends BaseBlock {
+  type: 'question-ref';
+  questionId: string;
 }
 
-export interface ClozeBlock extends BaseBlock {
-  type: 'cloze';
-  segments: ClozeSegment[];
-}
-
-export type Block = TextBlock | ClozeBlock;
+export type Block = TextBlock | QuestionRefBlock;
 
 // ─── Slide ────────────────────────────────────────────────────────────────────
 
@@ -42,24 +36,16 @@ export interface Slide {
 }
 
 // ─── Presentation ─────────────────────────────────────────────────────────────
-// A Presentation is one deliverable linked to a curriculum Lesson.
-// Multiple presentations can exist for the same lesson (e.g. Higher, Foundation, Re-teach).
 
 export interface Presentation {
   id: string;
-  // Human-readable title — the root lesson name is stored separately;
-  // variantName holds the suffix, e.g. "Higher", "Foundation", "Re-teach", "v2"
-  // The display name is: lessonTitle + (variantName ? " — " + variantName : "")
   title: string;
-  variantName: string;   // e.g. "" for the first/default, "Higher", "Foundation"
-
-  // Curriculum links
+  variantName: string;
   subjectId: string;
   qualificationId: string;
   yearGroupId: string;
   unitId: string;
-  lessonId: string;       // links to Lesson in curriculum
-
+  lessonId: string;
   slides: Slide[];
   createdAt: string;
   updatedAt: string;
